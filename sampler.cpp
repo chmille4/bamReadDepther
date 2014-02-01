@@ -5,6 +5,8 @@
 #include <utility>
 #include <sstream>
 #include <cmath>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "zlib.h"
 using namespace std;
