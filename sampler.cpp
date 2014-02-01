@@ -149,10 +149,6 @@ int main(int argc, char **argv) {
                 if (maxBin < binId)
                    maxBin = binId;
                 bins[binId - 4681] = byteCount;
-                if (binId == 4681) {
-                   cout << "bin = " << binId << " = " << byteCount << endl;
-                   return 0;
-                }
              }
             // const int32_t chunkBytes = numChunks * ( 2*sizeof(int64_t) ); // 2 8-byte values for each chunk
             // myFile.seekg(chunkBytes, ios_base::cur);
