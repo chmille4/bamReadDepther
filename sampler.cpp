@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
           for (int m=0; m <= maxBin; m++) {
              sum += bins[m];
              if ( (m % roundsToAdd) == (roundsToAdd-1)) {
-                cout << endl << (m+1)*16000 << "\t" << sum/roundsToAdd;
+                cout << endl << m*16384 << "\t" << sum/roundsToAdd;
                 sum = 0;
              }
 
