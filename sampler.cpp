@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
     // foreach reference
     for ( int i = 0; i < numReferences; ++ i ) {
         // array holder
-        int bins[32768];
+        int bins[32768] = {0};
         int maxBin = 0;
        
         int32_t numBins;
@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
           int roundsToAdd;
           if (numOutputBins == 0 || maxBin == 0)
              roundsToAdd = 1;
-          else if (maxBin < numOutputBins) 
+          else if (maxBin < numOutputBins)
              roundsToAdd = maxBin;
           else
              roundsToAdd = floor(maxBin / numOutputBins);
