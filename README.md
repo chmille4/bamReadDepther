@@ -3,7 +3,7 @@ Simple utility that estimates the read depth of a BAM file using only the .BAI i
 
 ## Usage
 ```
-cat 1.bam | ./bamReadDepther
+cat 1.bai | ./bamReadDepther
 ```
 
 ## Output
