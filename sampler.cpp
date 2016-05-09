@@ -35,7 +35,7 @@ static inline void SwapEndian_32(uint32_t& x) {
 }
 
 static inline void SwapEndian_64(int64_t& x) {
-    x = ( (x >> 56) | 
+    x = ( (x >> 56) |
          ((x << 40) & 0x00FF000000000000ll) |
          ((x << 24) & 0x0000FF0000000000ll) |
          ((x << 8)  & 0x000000FF00000000ll) |
@@ -47,7 +47,7 @@ static inline void SwapEndian_64(int64_t& x) {
 }
 
 static inline void SwapEndian_64(uint64_t& x) {
-    x = ( (x >> 56) | 
+    x = ( (x >> 56) |
          ((x << 40) & 0x00FF000000000000ll) |
          ((x << 24) & 0x0000FF0000000000ll) |
          ((x << 8)  & 0x000000FF00000000ll) |
@@ -65,13 +65,14 @@ static inline std::pair<uint32_t, uint32_t> bin2Region(const uint16_t bin) {
 }
 
 
-int main(int argc, char **argv) {    
+int main(int argc, char **argv) {
 
     // initialize stream
     istream* myFile = &cin;
     int numOutputBins = 0;
     int c;
-    
+    int totalBytesRead = 0;
+
     // parse command line
     while ((c = getopt (argc, argv, "b:")) != -1)
       switch (c) {
@@ -79,10 +80,11 @@ int main(int argc, char **argv) {
             numOutputBins = atoi(optarg);
             break;
       }
-    
+
     // read BAI magic number
     char magic[4];
     myFile->read(magic, 4);
+    totalBytesRead += 4;
 
     if ( !myFile ) {
 
@@ -99,6 +101,8 @@ int main(int argc, char **argv) {
     myFile->read((char*)&numReferences, sizeof(numReferences));
     if ( IS_BIG_ENDIAN )
         SwapEndian_32(numReferences);
+    totalBytesRead += sizeof(numReferences);
+
     //cout << "numReferences: " << numReferences << endl;
     bool isFirst = true;
 
@@ -107,13 +111,17 @@ int main(int argc, char **argv) {
         // array holder
         int bins[32768] = {0};
         int maxBin = 0;
-       
+        std::ostringstream magicBin;
+
+
+
         int32_t numBins;
         myFile->read((char*)&numBins, sizeof(numBins));
         if ( IS_BIG_ENDIAN )
             SwapEndian_32(numBins);
-           
-         // cout << "Reference #:" << i << " has " << numBins << " bins" << endl;
+        totalBytesRead += sizeof(numBins);
+        // cout << "totalBytesRead = " << totalBytesRead << endl;
+        // cout << "Reference #:" << i << " has " << numBins << " bins" << endl;
 
         // foreach bin
         for ( int j = 0; j < numBins; ++j ) {
@@ -122,49 +130,68 @@ int main(int argc, char **argv) {
             myFile->read((char*)&binId, sizeof(binId));
             if ( IS_BIG_ENDIAN )
                 SwapEndian_32(binId);
+            totalBytesRead += sizeof(binId);
 
             int32_t numChunks;
             myFile->read((char*)&numChunks, sizeof(numChunks));
             if ( IS_BIG_ENDIAN )
                 SwapEndian_32(numChunks);
+            totalBytesRead += sizeof(numChunks);
 
             int byteCount = 0;
+            int64_t endBlockAddress;
+            int64_t startBlockAddress;
+            int64_t startChunk;
+            int64_t endChunk;
+            int64_t chunkSize;
             // cout << "binid " << binId << " chunks " << numChunks << endl;
             for ( int k = 0; k < numChunks; ++ k ) {
-               int64_t startChunk;
-               int64_t endChunk;
-               myFile->read((char*)&startChunk, sizeof(startChunk));
-               myFile->read((char*)&endChunk, sizeof(endChunk));
+               myFile->read((char*)&startChunk, sizeof(chunkSize));
+               totalBytesRead += sizeof(startChunk);
+               myFile->read((char*)&endChunk, sizeof(chunkSize));
+               totalBytesRead += sizeof(endChunk);
                if ( IS_BIG_ENDIAN ) {
                    SwapEndian_64(startChunk);
                    SwapEndian_64(endChunk);
                 }
-               int64_t endBlockAddress = (endChunk   >> 16) & 0xFFFFFFFFFFFFLL;
-               int64_t startBlockAddress   = (startChunk >> 16) & 0xFFFFFFFFFFFFLL;
-               
+               endBlockAddress = (endChunk   >> 16) & 0xFFFFFFFFFFFFLL;
+               startBlockAddress   = (startChunk >> 16) & 0xFFFFFFFFFFFFLL;
+
+               // cout << "endBlockAddress = " << endBlockAddress << endl;
                byteCount = byteCount + (endBlockAddress - startBlockAddress);
              }
-             // only display the 16kb bins            
+             // only display the 16kb bins
+
+             // if (binId == 37450) {
+             //    cout << "#" << i << " binId = " << binId << endl;
+             // }
+
              if ( binId >=  4681 && binId <= 37449) {
                 if (maxBin < binId)
                    maxBin = binId;
                 bins[binId - 4681] = byteCount;
              }
-            // const int32_t chunkBytes = numChunks * ( 2*sizeof(int64_t) ); // 2 8-byte values for each chunk
-            // myFile.seekg(chunkBytes, ios_base::cur);
+
+             // grab magic bin
+             if ( binId == 37450) {
+                magicBin << startChunk << "\t" << endChunk;
+             }
+
         }
 
         int32_t numLinearOffsets;
         myFile->read((char*)&numLinearOffsets, sizeof(numLinearOffsets));
         if ( IS_BIG_ENDIAN )
             SwapEndian_32(numLinearOffsets);
+        totalBytesRead += sizeof(numLinearOffsets);
 
         // skip linear offsets
         const int32_t offsetBytes = numLinearOffsets * sizeof(uint64_t);
         char eat[offsetBytes];
         myFile->read(eat,offsetBytes);
-        // myFile->seekg(offsetBytes, ios_base::cur);
+        totalBytesRead += offsetBytes;
 
+        //cout << "totalbytes = " << totalBytesRead << endl;
        // output bins
        // substract starting bin to get total bins
 
@@ -174,7 +201,7 @@ int main(int argc, char **argv) {
              cout << endl;
           else
              isFirst = false;
-          cout << "#" << i;
+         cout << "#" << i << "\t" << magicBin.str();
           int roundsToAdd;
           if (numOutputBins == 0 || maxBin == 0)
              roundsToAdd = 1;
@@ -182,12 +209,12 @@ int main(int argc, char **argv) {
              roundsToAdd = maxBin;
           else
              roundsToAdd = floor(maxBin / numOutputBins);
-             
+
           int sum = 0;
           for (int m=0; m <= maxBin; m++) {
              sum += bins[m];
              if ( (m % roundsToAdd) == (roundsToAdd-1)) {
-                cout << endl << m*16384 << "\t" << sum/roundsToAdd;
+               cout << endl << m*16384 << "\t" << sum/roundsToAdd;
                 sum = 0;
              }
 
@@ -196,6 +223,9 @@ int main(int argc, char **argv) {
        }
 
     }
-    
+
+    int64_t n_no_coor;
+    myFile->read((char*)&n_no_coor, sizeof(n_no_coor));
+    cout << endl << "*" << "\t" << "\t" << n_no_coor;
     return 0;
 }
